@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "818459345501",
+    "project_id": "sigma-helpdesk",
+    "storage_bucket": "sigma-helpdesk.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:818459345501:android:d5d2d223a8386df605c3b4",
+        "android_client_info": {
+          "package_name": "com.arkayapps.sigmahelpdesk"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAKIkgB9UIr-huZXLG7TazVzWzL5P8Dx-Q"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:818459345501:android:197796563c1ae63b05c3b4",
+        "android_client_info": {
+          "package_name": "com.sigmarectrix.sigmahelpdesk"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAKIkgB9UIr-huZXLG7TazVzWzL5P8Dx-Q"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
