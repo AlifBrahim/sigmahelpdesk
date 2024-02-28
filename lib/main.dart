@@ -1,4 +1,5 @@
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:odoo_rpc/odoo_rpc.dart';
@@ -23,12 +24,37 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive/hive.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'globals.dart' as globals;
 
 final storage = new FlutterSecureStorage();
+@pragma('vm:entry-point')
+Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  await Firebase.initializeApp();
+  print("Handling a background message: ${message.messageId}");
+}
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
     await Firebase.initializeApp();
+
+
+  FirebaseMessaging messaging = FirebaseMessaging.instance;
+  FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+
+  globals.fcmToken = await messaging.getToken();
+  print('FCM Token: ${globals.fcmToken}');
+
+  NotificationSettings settings = await messaging.requestPermission(
+    alert: true,
+    announcement: false,
+    badge: true,
+    carPlay: false,
+    criticalAlert: false,
+    provisional: false,
+    sound: true,
+  );
+  print('User granted permission: ${settings.authorizationStatus}');
+  FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
 
   // Read value from secure storage
   String? username = await storage.read(key: 'username');
@@ -42,12 +68,24 @@ void main() async {
   if (username != null && password != null) {
     try {
       var client = OdooClient(URL);
-      globalSession = await client.authenticate('sigmarectrix-11', username, password);
+      globalSession = await client.authenticate('odoo11', username, password);
       globalUserId = globalSession.userId;  // Store the user ID
       globalClient = client;  // Update the global client
 
       print('Authentication successful');
       initialRoute = '/MyTicketMainScreen';
+
+      // Send FCM token to Odoo server
+      await globalClient.callKw({
+        'model': 'fcm.token',  // Use the new model name
+        'method': 'store_fcm_token',  // Use the new method name
+        'args': [],
+        'kwargs': {
+          'user_id': globalUserId,
+          'token': globals.fcmToken,
+        },
+      });
+      print('FCM token sent to Odoo server for ${globalUserId}: ${globals.fcmToken}');
     } catch (e) {
       print('Failed to authenticate: $e');
     }

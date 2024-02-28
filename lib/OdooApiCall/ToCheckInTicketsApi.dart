@@ -1,8 +1,13 @@
 // TODO Implement this library.import 'dart:convert';
+import 'dart:convert';
+import 'package:flutter/services.dart';
+import 'package:http/http.dart' as http;
+import 'package:googleapis_auth/auth_io.dart' as auth;
 import 'package:odoo_rpc/odoo_rpc.dart';
 import '/OdooApiCall_DataMapping/ResPartner.dart';
 import '/screens/authentication/LoginScreen.dart';
 import '../OdooApiCall_DataMapping/ToCheckIn_ToCheckOut_SupportTicket.dart';
+import '/globals.dart' as globals;
 
   
 //might need to import session id here, to get user id, to get to filter.
@@ -31,8 +36,52 @@ class ToCheckInTicketsApi {
     //print('\nUser info: \n' +
     //  fetchTicketData.toString()); //TODO this is for testing only, delete later
     //listTicket =  fetchTicketData.map((json) => UnassignedUnassignedSupportTicket.fromJson(json)).toList(); //convert our json data from odoo to list.
+    // Send a notification for each new ticket
+    for (var ticket in listTicket) {
+      ToCheckInOutSupportTicket newTicket = ToCheckInOutSupportTicket.fromJson(ticket);
+      sendNotification(
+          'New Ticket: ${newTicket.ticket_number}',
+          'A new ticket has been assigned to you.',
+      );
+    }
+
     return listTicket.map((json) => ToCheckInOutSupportTicket.fromJson(json)).toList();
   }
+    static Future<void> sendNotification(String title, String body) async {
+      String? token = globals.fcmToken;
+      final jsonCredentials = await rootBundle.loadString('google-services.json');
+      final creds = auth.ServiceAccountCredentials.fromJson(jsonCredentials);
+
+      final client = await auth.clientViaServiceAccount(
+        creds,
+        ['https://www.googleapis.com/auth/cloud-platform'],
+      );
+
+      final notificationData = {
+        'message': {
+          'token': token,
+          'notification': {
+            'title': title,
+            'body': body,
+          },
+        },
+      };
+
+      final response = await client.post(
+        Uri.parse('https://fcm.googleapis.com/v1/projects/sigma-helpdesk/messages:send'),
+        headers: {'content-type': 'application/json'},
+        body: jsonEncode(notificationData),
+      );
+
+      if (response.statusCode == 200) {
+        print('Notification sent successfully');
+      } else {
+        print('Notification not sent');
+      }
+
+      client.close();
+    }
+
 
     static Future<List<ResPartner>> getResPartner (String respartner_id) async {
     var fetchTicketData = await globalClient.callKw({ //might need to be changed to widget.client.callkw later because of passing user id session.

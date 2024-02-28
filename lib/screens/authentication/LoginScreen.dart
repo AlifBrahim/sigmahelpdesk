@@ -10,13 +10,15 @@ import '/widgets/Styles.dart';
 import '/screens/authentication/ForgotPasswordScreen.dart';
 import '/util/Util.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import '/globals.dart' as globals;
+import 'package:firebase_messaging/firebase_messaging.dart';
 
 
 //create a global variable because, sometimes we need a global variable.
 //using client and session will not cause security issues on global by the way, it is only used for calling data from API.
 //alternative would be to passvalue using stateful widget when passing in navigation.
 
-var URL = 'http://42.1.60.211:8069';//'http://10.0.0.226:8069'; // 'http://192.168.0.123:8069';//'http://127.0.0.1:8069';//'http://localhost:8069';//'http://10.0.0.226:8069'; //192.168.0.123
+var URL = 'http://10.0.0.138:8069';// http://42.1.60.211:8069//'http://10.0.0.226:8069'; // 'http://192.168.0.123:8069';//'http://127.0.0.1:8069';//'http://localhost:8069';//'http://10.0.0.226:8069'; //192.168.0.123
 var globalClient = OdooClient(URL);
 var globalSession;
 var globalUserId;
@@ -27,6 +29,7 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
+
   TextEditingController email = new TextEditingController();
   TextEditingController password = new TextEditingController();
 
@@ -324,16 +327,19 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> checkValidations() async {
+    FirebaseMessaging messaging = FirebaseMessaging.instance;
+    globals.fcmToken = await messaging.getToken();
+    print('FCM Token first time: ${globals.fcmToken}');
     if (email.text.isEmpty) {
       isDisplayEmailErrorNotification = true;
       isDisplayErrorNotification = false;
 
       showErrorNotification(pleaseEnterEmail);
-    } else if (!EmailValidator.validate(email.text.trim())) {
-      isDisplayEmailErrorNotification = true;
-      isDisplayErrorNotification = false;
-
-      showErrorNotification(pleaseEnterValidEmail);
+    // } else if (!EmailValidator.validate(email.text.trim())) {
+    //   isDisplayEmailErrorNotification = true;
+    //   isDisplayErrorNotification = false;
+    //
+    //   showErrorNotification(pleaseEnterValidEmail);
     } else if (password.text.isEmpty) {
       isDisplayErrorNotification = true;
       isDisplayEmailErrorNotification = false;
@@ -355,13 +361,24 @@ class _LoginScreenState extends State<LoginScreen> {
         final storage = new FlutterSecureStorage();
 
         var client = OdooClient(URL);
-        globalSession = await client.authenticate('sigmarectrix-11', email.text, password.text);
+        globalSession = await client.authenticate('odoo11', email.text, password.text); // sigmarectrix-11
         globalUserId = globalSession.userId;  // Store the user ID
         globalClient = client;  // Update the global client
         // Save credentials in secure storage
         await storage.write(key: 'username', value: email.text);
         await storage.write(key: 'password', value: password.text);
         print('Credentials saved');
+        // Send FCM token to Odoo server
+        await globalClient.callKw({
+          'model': 'fcm.token',  // Use the new model name
+          'method': 'store_fcm_token',  // Use the new method name
+          'args': [],
+          'kwargs': {
+            'user_id': globalUserId,
+            'token': globals.fcmToken,
+          },
+        });
+        print('FCM token sent to Odoo server for ${globalUserId}: ${globals.fcmToken}');
         setState(() {
           showLoadingIndicator = false;
         });
